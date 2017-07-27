@@ -113,6 +113,7 @@ extern void shmem_complexd_put (COMPLEXIFY (double) * dest,
  * now deferred to the comms layer
  */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_PUT(Name, Type)                                      \
     void                                                                \
     shmem_##Name##_put (Type *dest, const Type *src, size_t nelems, int pe) \
@@ -124,7 +125,22 @@ extern void shmem_complexd_put (COMPLEXIFY (double) * dest,
         PE_RANGE_CHECK (pe, 4, debug_name);                             \
         shmemi_comms_put (dest, (void *) src, typed_nelems, pe);        \
     }
-
+#else
+#define SHMEM_TYPE_PUT(Name, Type)                                      \
+    void                                                                \
+    shmem_##Name##_put (Type *dest, const Type *src, size_t nelems, int pe) \
+    {                                                                   \
+        DEBUG_NAME ("shmem_" #Name "_put");                             \
+        const int typed_nelems = (int) (nelems * sizeof (Type));        \
+        INIT_CHECK (debug_name);                                        \
+        SYMMETRY_CHECK (dest, 1, debug_name);                           \
+        PE_RANGE_CHECK (pe, 4, debug_name);                             \
+        void * src_ = (void*) src;                                      \
+        void * dst = shmemi_symmetric_addr_lookup((void*)dest, pe);     \
+        printf("SRC: %p DEST: %p\n",src_,dst);                          \
+        comex_put(src_, dst, typed_nelems, pe, shmemgroup);             \
+    }
+#endif
 SHMEM_TYPE_PUT (char, char);
 SHMEM_TYPE_PUT (short, short);
 SHMEM_TYPE_PUT (int, int);
@@ -161,7 +177,13 @@ shmem_putmem (void *dest, const void *src, size_t nelems, int pe)
     INIT_CHECK (debug_name);
     SYMMETRY_CHECK (dest, 1, debug_name);
     PE_RANGE_CHECK (pe, 4, debug_name);
+    #ifdef USE_GASNET
     shmemi_comms_put_bulk (dest, (void *) src, nelems, pe);
+    #else
+    void * src_ = (void*) src;                                      
+    void * dst = shmemi_symmetric_addr_lookup((void*)dest, pe);     
+    comex_put(src_, dst, nelems, pe, shmemgroup);             
+    #endif
 }
 
 
@@ -204,6 +226,7 @@ extern void shmem_complexd_get (COMPLEXIFY (double) * dest,
 /* # pragma weak shmem_get = pshmem_get */
 #endif /* HAVE_FEATURE_PSHMEM */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_GET(Name, Type)                                      \
     void                                                                \
     shmem_##Name##_get (Type *dest, const Type *src, size_t nelems, int pe) \
@@ -215,7 +238,22 @@ extern void shmem_complexd_get (COMPLEXIFY (double) * dest,
         PE_RANGE_CHECK (pe, 4, debug_name);                             \
         shmemi_comms_get (dest, (void *) src, typed_nelems, pe);        \
     }
-
+#else
+#define SHMEM_TYPE_GET(Name, Type)                                      \
+    void                                                                \
+    shmem_##Name##_get (Type *dest, const Type *src, size_t nelems, int pe) \
+    {                                                                   \
+        DEBUG_NAME ("shmem_" #Name "_get");                             \
+        int typed_nelems = nelems * sizeof (Type);                          \
+        INIT_CHECK (debug_name);                                        \
+        SYMMETRY_CHECK (src, 2, debug_name);                            \
+        PE_RANGE_CHECK (pe, 4, debug_name);                             \
+        void * dst = (void*) dest;                                      \
+        void * src_ = shmemi_symmetric_addr_lookup((void*)src, pe);     \
+        printf("SRC: %p DEST: %p\n",src_,dst);                          \
+        comex_get(src_, dst, typed_nelems, pe, shmemgroup);             \
+    }
+#endif
 SHMEM_TYPE_GET (char, char);
 SHMEM_TYPE_GET (short, short);
 SHMEM_TYPE_GET (int, int);
@@ -252,7 +290,13 @@ shmem_getmem (void *dest, const void *src, size_t nelems, int pe)
     INIT_CHECK (debug_name);
     SYMMETRY_CHECK (src, 2, debug_name);
     PE_RANGE_CHECK (pe, 4, debug_name);
+    #ifdef USE_GASNET
     shmemi_comms_get_bulk (dest, (void *) src, nelems, pe);
+    #else
+    void * dst = (void*) dest;                                      
+    void * src_ = shmemi_symmetric_addr_lookup((void*)src, pe);     
+    comex_get(src_, dst, nelems, pe, shmemgroup); 
+    #endif
 }
 
 

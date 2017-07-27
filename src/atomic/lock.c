@@ -87,14 +87,19 @@
 void
 shmem_set_lock (volatile long *lock)
 {
+//#ifdef USE_GASNET
     shmemi_comms_lock_acquire (&((SHMEM_LOCK *) lock)[1],
                                &((SHMEM_LOCK *) lock)[0],
                                GET_STATE (mype));
+/*#else
+comex_lock(0, GET_STATE(mype);
+#endif*/
 }
 
 void
 shmem_clear_lock (volatile long *lock)
 {
+//#ifdef USE_GASNET
     /* The Cray man pages suggest we also need to do this (addy
        12.10.05) */
     shmem_quiet ();
@@ -102,6 +107,9 @@ shmem_clear_lock (volatile long *lock)
     shmemi_comms_lock_release (&((SHMEM_LOCK *) lock)[1],
                                &((SHMEM_LOCK *) lock)[0],
                                GET_STATE (mype));
+/*#else
+    comex_unlock(0, GET_STATE(mype));
+#endif*/	
 }
 
 int

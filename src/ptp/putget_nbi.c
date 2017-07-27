@@ -113,6 +113,7 @@ extern void shmem_complexd_put_nbi (COMPLEXIFY (double) * dest,
  * now deferred to the comms layer
  */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_PUT_NBI(Name, Type)                                  \
     void                                                                \
     shmem_##Name##_put_nbi (Type *dest, const Type *src,                \
@@ -125,7 +126,22 @@ extern void shmem_complexd_put_nbi (COMPLEXIFY (double) * dest,
         PE_RANGE_CHECK (pe, 4, debug_name);                             \
         shmemi_comms_put_nbi (dest, (void *) src, typed_nelems, pe);    \
     }
-
+#else
+#define SHMEM_TYPE_PUT_NBI(Name, Type)                                  \
+    void                                                                \
+    shmem_##Name##_put_nbi (Type *dest, const Type *src,                \
+                            size_t nelems, int pe)                      \
+    {                                                                   \
+        DEBUG_NAME ("shmem_" #Name "_put_nbi");                         \
+        int typed_nelems = nelems * sizeof (Type);             \
+        INIT_CHECK (debug_name);                                        \
+        SYMMETRY_CHECK (dest, 1, debug_name);                           \
+        PE_RANGE_CHECK (pe, 4, debug_name);                             \
+        void * src_ = (void*) src;                                      \
+        void * dst = shmemi_symmetric_addr_lookup(dest, pe);            \
+        comex_nbput(src_, dst, typed_nelems, pe, shmemgroup, newhdl()); \
+    }
+#endif
 SHMEM_TYPE_PUT_NBI (char, char);
 SHMEM_TYPE_PUT_NBI (short, short);
 SHMEM_TYPE_PUT_NBI (int, int);
@@ -162,7 +178,13 @@ shmem_putmem_nbi (void *dest, const void *src, size_t nelems, int pe)
     INIT_CHECK (debug_name);
     SYMMETRY_CHECK (dest, 1, debug_name);
     PE_RANGE_CHECK (pe, 4, debug_name);
+    #ifdef USE_GASNET
     shmemi_comms_put_nbi_bulk (dest, (void *) src, nelems, pe);
+    #else
+    void * src_ = (void*) src;                                      
+    void * dst = shmemi_symmetric_addr_lookup(dest, pe);            
+    comex_nbput(src_, dst, nelems, pe, shmemgroup, newhdl()); 
+    #endif 
 }
 
 
@@ -205,6 +227,7 @@ extern void shmem_complexd_get_nbi (COMPLEXIFY (double) * dest,
 /* # pragma weak shmem_get_nbi = pshmem_get_nbi */
 #endif /* HAVE_FEATURE_PSHMEM */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_GET_NBI(Name, Type)                                  \
     void                                                                \
     shmem_##Name##_get_nbi (Type *dest, const Type *src,                \
@@ -216,8 +239,23 @@ extern void shmem_complexd_get_nbi (COMPLEXIFY (double) * dest,
         SYMMETRY_CHECK (src, 2, debug_name);                            \
         PE_RANGE_CHECK (pe, 4, debug_name);                             \
         shmemi_comms_get_nbi (dest, (void *) src, typed_nelems, pe);    \
-    }
-
+   }
+#else
+#define SHMEM_TYPE_GET_NBI(Name, Type)                                  \
+    void                                                                \
+    shmem_##Name##_get_nbi (Type *dest, const Type *src,                \
+                            size_t nelems, int pe)                      \
+    {                                                                   \
+        DEBUG_NAME ("shmem_" #Name "_get_nbi");                         \
+        int typed_nelems = nelems * sizeof (Type);             \
+        INIT_CHECK (debug_name);                                        \
+        SYMMETRY_CHECK (src, 2, debug_name);                            \
+        PE_RANGE_CHECK (pe, 4, debug_name);                             \
+        void * src_ = (void*) src;                                      \
+        void * dst = shmemi_symmetric_addr_lookup(dest, pe);            \
+        comex_nbget(src_, dst, typed_nelems, pe, shmemgroup, newhdl()); \
+   }
+#endif
 SHMEM_TYPE_GET_NBI (char, char);
 SHMEM_TYPE_GET_NBI (short, short);
 SHMEM_TYPE_GET_NBI (int, int);
@@ -254,5 +292,11 @@ shmem_getmem_nbi (void *dest, const void *src, size_t nelems, int pe)
     INIT_CHECK (debug_name);
     SYMMETRY_CHECK (src, 2, debug_name);
     PE_RANGE_CHECK (pe, 4, debug_name);
+    #ifdef USE_GASNET
     shmemi_comms_get_nbi_bulk (dest, (void *) src, nelems, pe);
+    #else                                                           
+    void * src_ = (void*) src;                                      
+    void * dst = shmemi_symmetric_addr_lookup(dest, pe);            
+    comex_nbget(src_, dst, nelems, pe, shmemgroup, newhdl());      
+    #endif                                                          
 }

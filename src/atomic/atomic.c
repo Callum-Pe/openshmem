@@ -98,7 +98,7 @@ shmemi_atomic_finalize (void)
  * "value" into target on processing element (PE) pe and returns the
  * previous contents of target as an atomic operation.
  */
-
+#ifdef USE_GASNET
 #define SHMEM_TYPE_SWAP(Name, Type)                                     \
     Type                                                                \
     shmem_##Name##_swap (Type *target, Type value, int pe)              \
@@ -109,7 +109,23 @@ shmemi_atomic_finalize (void)
         return shmemi_comms_swap_request_##Name (target, value,         \
                                                  pe);                   \
     }
-
+#else
+#define SHMEM_TYPE_SWAP(Name, Type)                                     \
+    Type                                                                \
+    shmem_##Name##_swap (Type *target, Type value, int pe)              \
+    {                                                                   \
+        comex_lock(0, );\
+        DEBUG_NAME ("shmem_" #Name "_swap");                            \
+        INIT_CHECK (debug_name);                                        \
+        PE_RANGE_CHECK (pe, 3, debug_name);                             \
+        Type temp;\
+        void * temppntr = &temp;                                        \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        comex_get(dst, temppntr, sizeof(Type), pe, shmemgroup);             \
+        comex_put( &value, dst, sizeof(Type), pe, shmemgroup);           \
+        return temp;                                           \
+    }
+#endif
 SHMEM_TYPE_SWAP (int, int);
 SHMEM_TYPE_SWAP (long, long);
 SHMEM_TYPE_SWAP (longlong, long long);
@@ -131,6 +147,7 @@ SHMEM_TYPE_SWAP (float, float);
  * contents of the data object in one atomic operation.
  */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_CSWAP(Name, Type)                                    \
     Type                                                                \
     shmem_##Name##_cswap (Type *target, Type cond, Type value, int pe)  \
@@ -141,6 +158,26 @@ SHMEM_TYPE_SWAP (float, float);
         return shmemi_comms_cswap_request_##Name (target, cond, value,  \
                                                   pe);                  \
     }
+#else
+#define SHMEM_TYPE_CSWAP(Name, Type)                                    \
+    Type                                                                \
+    shmem_##Name##_cswap (Type *target, Type cond, Type value, int pe)  \
+    {                                                                   \
+        DEBUG_NAME ("shmem_" #Name "_swap");                            \
+        INIT_CHECK (debug_name);                                        \
+        PE_RANGE_CHECK (pe, 4, debug_name);                             \
+        Type temp;\
+        void * temppntr = &temp;                                        \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        int bytes = sizeof(Type);                                       \
+        comex_get(dst, temppntr, bytes, pe, shmemgroup);                    \
+        if(cond == temp)                                     \
+        {                                                               \
+          comex_put(&value, dst, bytes, pe, shmemgroup);                \
+        }                                                               \
+        return temp;                                          \
+    }
+#endif
 
 SHMEM_TYPE_CSWAP (int, int);
 SHMEM_TYPE_CSWAP (long, long);
@@ -155,6 +192,7 @@ SHMEM_TYPE_CSWAP (longlong, long long);
 #define shmem_longlong_fadd pshmem_longlong_fadd
 #endif /* HAVE_FEATURE_PSHMEM */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_FADD(Name, Type)                                     \
     Type                                                                \
     shmem_##Name##_fadd (Type *target, Type value, int pe)              \
@@ -165,7 +203,32 @@ SHMEM_TYPE_CSWAP (longlong, long long);
         return shmemi_comms_fadd_request_##Name (target, value,         \
                                                  pe);                   \
     }
-
+#else
+#define SHMEM_TYPE_FADD(Name, Type)                                     \
+    Type                                                                \
+    shmem_##Name##_fadd (Type *target, Type value, int pe)              \
+    {                                                                   \
+        DEBUG_NAME ("shmem_" #Name "_fadd");                            \
+        INIT_CHECK (debug_name);                                        \
+        PE_RANGE_CHECK (pe, 3, debug_name);                             \
+        void* src = &value;                                             \
+        Type temp;\
+        void * temppntr= &temp;                                                    \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        int bytes = sizeof(Type);                                       \
+        comex_get(dst, temppntr, bytes, pe, shmemgroup);                     \
+        Type scale = 1;                                                 \
+       int op;  \
+        if(bytes == sizeof(int))                                        \
+          op = COMEX_ACC_INT;                                       \
+        if(bytes == sizeof(long))                                       \
+          op = COMEX_ACC_LNG;                                       \
+        else                                                            \
+          assert("Long long not implemented");                          \
+        comex_acc(op, &scale, src, dst, bytes, pe, shmemgroup);         \
+        return temp;                                          \
+    }
+#endif
 SHMEM_TYPE_FADD (int, int);
 SHMEM_TYPE_FADD (long, long);
 SHMEM_TYPE_FADD (longlong, long long);
@@ -185,6 +248,7 @@ SHMEM_TYPE_FADD (longlong, long long);
  * on another PE
  */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_FINC(Name, Type)                             \
     Type                                                        \
     shmem_##Name##_finc (Type *target, int pe)                  \
@@ -195,7 +259,17 @@ SHMEM_TYPE_FADD (longlong, long long);
         return shmemi_comms_finc_request_##Name (target,        \
                                                  pe);           \
     }
-
+#else
+#define SHMEM_TYPE_FINC(Name, Type)                             \
+    Type                                                        \
+    shmem_##Name##_finc (Type *target, int pe)                  \
+    {                                                           \
+        DEBUG_NAME ("shmem_" #Name "_finc");                    \
+        INIT_CHECK (debug_name);                                \
+        PE_RANGE_CHECK (pe, 2, debug_name);                     \
+        return shmem_##Name##_fadd(target, 1, pe);              \
+    }
+#endif
 SHMEM_TYPE_FINC (int, int);
 SHMEM_TYPE_FINC (long, long);
 SHMEM_TYPE_FINC (longlong, long long);
@@ -213,6 +287,7 @@ SHMEM_TYPE_FINC (longlong, long long);
  * remote atomic increment/add
  *
  */
+#ifdef USE_GASNET
 #define SHMEM_TYPE_ADD(Name, Type)                                      \
     void                                                                \
     shmem_##Name##_add (Type *target, Type value, int pe)               \
@@ -224,7 +299,28 @@ SHMEM_TYPE_FINC (longlong, long long);
                                          value,                         \
                                          pe);                           \
     }
-
+#else
+#define SHMEM_TYPE_ADD(Name, Type)                                      \
+    void                                                                \
+    shmem_##Name##_add (Type *target, Type value, int pe)               \
+    {                                                                   \
+        DEBUG_NAME ("shmem_" #Name "_add");                             \
+        INIT_CHECK (debug_name);                                        \
+        PE_RANGE_CHECK (pe, 3, debug_name);                             \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        int bytes = sizeof(Type);                                       \
+        Type scale = 1;                                                 \
+        int op;  \
+        if(bytes == sizeof(int))                                        \
+          op = COMEX_ACC_INT;                                       \
+        if(bytes == sizeof(long))                                       \
+          op = COMEX_ACC_LNG;                                       \
+        else                                                            \
+          assert("Long long not implemented");\
+        comex_acc(op,((void*) &scale),((void*) &value), dst, bytes, \
+                  pe, shmemgroup);  \
+    }
+#endif
 SHMEM_TYPE_ADD (int, int);
 SHMEM_TYPE_ADD (long, long);
 SHMEM_TYPE_ADD (longlong, long long);
@@ -239,6 +335,7 @@ SHMEM_TYPE_ADD (longlong, long long);
 #define shmem_longlong_inc pshmem_longlong_inc
 #endif /* HAVE_FEATURE_PSHMEM */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_INC(Name, Type)                              \
     void                                                        \
     shmem_##Name##_inc (Type *target, int pe)                   \
@@ -249,7 +346,17 @@ SHMEM_TYPE_ADD (longlong, long long);
         shmemi_comms_inc_request_##Name (target,                \
                                          pe);                   \
     }
-
+#else
+#define SHMEM_TYPE_INC(Name, Type)                              \
+    void                                                        \
+    shmem_##Name##_inc (Type *target, int pe)                   \
+    {                                                           \
+        DEBUG_NAME ("shmem_" #Name "_inc");                     \
+        INIT_CHECK (debug_name);                                \
+        PE_RANGE_CHECK (pe, 2, debug_name);                     \
+        shmem_##Name##_add(target, 1, pe);                      \
+     }
+#endif
 SHMEM_TYPE_INC (int, int);
 SHMEM_TYPE_INC (long, long);
 SHMEM_TYPE_INC (longlong, long long);
@@ -273,6 +380,7 @@ SHMEM_TYPE_INC (longlong, long long);
 #define shmem_double_fetch pshmem_double_fetch
 #endif /* HAVE_FEATURE_PSHMEM */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_FETCH(Name, Type)                                \
     Type                                                            \
     shmem_##Name##_fetch (const Type *target, int pe)               \
@@ -283,7 +391,21 @@ SHMEM_TYPE_INC (longlong, long long);
         return shmemi_comms_fetch_request_##Name ((Type *) target,  \
                                                   pe);              \
     }
-
+#else
+#define SHMEM_TYPE_FETCH(Name, Type)                                \
+    Type                                                            \
+    shmem_##Name##_fetch (const Type *target, int pe)               \
+    {                                                               \
+        DEBUG_NAME ("shmem_" #Name "_fetch");                       \
+        INIT_CHECK (debug_name);                                    \
+        PE_RANGE_CHECK (pe, 2, debug_name);                         \
+        void * src =NULL;                                                 \
+        void * dest = (void*) target;                                \
+        void * dst = shmemi_symmetric_addr_lookup(dest, pe);        \
+        comex_get( dst, src, sizeof(Type), pe, shmemgroup);        \
+        return *((Type*)src);                                       \
+    }
+#endif
 SHMEM_TYPE_FETCH (int, int);
 SHMEM_TYPE_FETCH (long, long);
 SHMEM_TYPE_FETCH (longlong, long long);
@@ -304,6 +426,7 @@ SHMEM_TYPE_FETCH (double, double);
 #define shmem_double_set pshmem_double_set
 #endif /* HAVE_FEATURE_PSHMEM */
 
+#ifdef USE_GASNET
 #define SHMEM_TYPE_SET(Name, Type)                                \
     void                                                          \
     shmem_##Name##_set (Type *target, Type value, int pe)         \
@@ -314,7 +437,19 @@ SHMEM_TYPE_FETCH (double, double);
         shmemi_comms_set_request_##Name (target, value,           \
                                          pe);                     \
     }
-
+#else
+#define SHMEM_TYPE_SET(Name, Type)                                \
+    void                                                          \
+    shmem_##Name##_set (Type *target, Type value, int pe)         \
+    {                                                             \
+        DEBUG_NAME ("shmem_" #Name "_set");                       \
+        INIT_CHECK (debug_name);                                  \
+        PE_RANGE_CHECK (pe, 2, debug_name);                       \
+        void * src = &value;                                      \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);    \
+        comex_put(src, dst, sizeof(Type), pe, shmemgroup);        \
+    }
+#endif
 SHMEM_TYPE_SET (int, int);
 SHMEM_TYPE_SET (long, long);
 SHMEM_TYPE_SET (longlong, long long);

@@ -65,6 +65,9 @@
 #include "pshmem.h"
 #endif /* HAVE_FEATURE_PSHMEM */
 
+#ifndef USE_GASNET
+#include <math.h>
+#endif
 /*
  * TODO: tree is currently buggy, don't use it
  */
@@ -127,8 +130,17 @@ shmem_barrier (int PE_start, int logPE_stride, int PE_size, long *pSync)
 {
     DEBUG_NAME ("shmem_barrier");
     INIT_CHECK (debug_name);
-
+//#ifdef USE_GASNET
     shmem_quiet ();
 
     func (PE_start, logPE_stride, PE_size, pSync);
+/*#else
+int i;
+comex_group_t *new_group = NULL;
+int* pid_list = (int*) malloc(PE_size*sizeof(int));
+for(i = 0;i <PE_size; i++)
+  pid_list[i] = PE_start + pow(2,i); 
+comex_group_create(PE_size, pid_list, shmemgroup,new_group );
+comex_barrier(*new_group);
+#endif*/
 }
