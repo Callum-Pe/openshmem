@@ -114,15 +114,16 @@ shmemi_atomic_finalize (void)
     Type                                                                \
     shmem_##Name##_swap (Type *target, Type value, int pe)              \
     {                                                                   \
-        comex_lock(0, );\
         DEBUG_NAME ("shmem_" #Name "_swap");                            \
         INIT_CHECK (debug_name);                                        \
         PE_RANGE_CHECK (pe, 3, debug_name);                             \
-        Type temp;\
+        Type temp;                                                      \
         void * temppntr = &temp;                                        \
         void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
-        comex_get(dst, temppntr, sizeof(Type), pe, shmemgroup);             \
-        comex_put( &value, dst, sizeof(Type), pe, shmemgroup);           \
+        comex_lock(0, pe);                                              \
+        comex_get(dst, temppntr, sizeof(Type), pe, shmemgroup);         \
+        comex_put( &value, dst, sizeof(Type), pe, shmemgroup);          \
+        comex_unlock(0, pe);                                            \
         return temp;                                           \
     }
 #endif
@@ -170,11 +171,13 @@ SHMEM_TYPE_SWAP (float, float);
         void * temppntr = &temp;                                        \
         void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
         int bytes = sizeof(Type);                                       \
+        comex_lock(0, pe);                                            \
         comex_get(dst, temppntr, bytes, pe, shmemgroup);                    \
         if(cond == temp)                                     \
         {                                                               \
           comex_put(&value, dst, bytes, pe, shmemgroup);                \
         }                                                               \
+        comex_unlock(0, pe);                                            \
         return temp;                                          \
     }
 #endif
@@ -216,6 +219,7 @@ SHMEM_TYPE_CSWAP (longlong, long long);
         void * temppntr= &temp;                                                    \
         void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
         int bytes = sizeof(Type);                                       \
+        comex_lock(0, pe);                                            \
         comex_get(dst, temppntr, bytes, pe, shmemgroup);                     \
         Type scale = 1;                                                 \
        int op;  \
@@ -226,6 +230,7 @@ SHMEM_TYPE_CSWAP (longlong, long long);
         else                                                            \
           assert("Long long not implemented");                          \
         comex_acc(op, &scale, src, dst, bytes, pe, shmemgroup);         \
+        comex_unlock(0, pe);                                            \
         return temp;                                          \
     }
 #endif
@@ -317,8 +322,10 @@ SHMEM_TYPE_FINC (longlong, long long);
           op = COMEX_ACC_LNG;                                       \
         else                                                            \
           assert("Long long not implemented");\
+        comex_lock(0, pe);                                            \
         comex_acc(op,((void*) &scale),((void*) &value), dst, bytes, \
                   pe, shmemgroup);  \
+        comex_unlock(0, pe);                                            \
     }
 #endif
 SHMEM_TYPE_ADD (int, int);
@@ -402,7 +409,9 @@ SHMEM_TYPE_INC (longlong, long long);
         void * src =NULL;                                                 \
         void * dest = (void*) target;                                \
         void * dst = shmemi_symmetric_addr_lookup(dest, pe);        \
+        comex_lock(0, pe);                                            \
         comex_get( dst, src, sizeof(Type), pe, shmemgroup);        \
+        comex_unlock(0, pe);                                            \
         return *((Type*)src);                                       \
     }
 #endif
@@ -447,7 +456,9 @@ SHMEM_TYPE_FETCH (double, double);
         PE_RANGE_CHECK (pe, 2, debug_name);                       \
         void * src = &value;                                      \
         void * dst = shmemi_symmetric_addr_lookup(target, pe);    \
+        comex_lock(0, pe);                                            \
         comex_put(src, dst, sizeof(Type), pe, shmemgroup);        \
+        comex_unlock(0, pe);                                            \
     }
 #endif
 SHMEM_TYPE_SET (int, int);
