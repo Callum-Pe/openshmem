@@ -80,23 +80,31 @@ uintptr_t heapsize;
 
 #ifndef USE_GASNET
 static comex_request_t nexthdl = 0;
-//struct hdl_lst_elem head = {-1,NULL);
-//hdl_lst_elem tail = head;
-comex_request_t newhdl()
+struct hdl_lst_elem head = {NULL ,NULL};
+hdl_lst_elem* tail = &head;
+comex_request_t* newhdl()
 {
-//  tail->next = (hdl_lst_elem*) malloc(sizeof(hdl_lst_elem));
-//  tail = tail->next;
-//  tail->next = NULL;
-//  *(tail->request) = nexthdl++;
-  return nexthdl++;//tail->request;
+  tail->next = (hdl_lst_elem*) malloc(sizeof(hdl_lst_elem));
+  tail = tail->next;
+  tail->next = NULL;
+  tail->request = (comex_request_t*) malloc(sizeof(hdl_lst_elem));
+  *(tail->request) = nexthdl++;
+  return tail->request;
 }  
 void clearhdls()
-{/*
-  hdl_lst_elem temp = head8;
-  while(temp != NULL)
-   */
-  nexthdl =0;
+{
   comex_wait_all(shmemgroup);	 
+  hdl_lst_elem* temp = head.next;
+  hdl_lst_elem* temp2;
+  while(temp != NULL)
+  {
+    free(temp->request);
+    temp2 = temp->next;
+    free(temp);
+    temp = temp2;
+  } 
+  tail = &head;
+  nexthdl =0;
 }
 #endif
 

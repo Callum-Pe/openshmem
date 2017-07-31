@@ -64,22 +64,17 @@ SHMEM_LIBS      += @EXE_LIBS@ -lelf
 SHMEM_LDFLAGS    = -L$(SHMEM_LIB_DIR)
 
 #
-# GASNet installation root, and setup
+# Comex installation root, and setup
 #
-#GASNET_ROOT      = @GASNET_ROOT@
-#GASNET_INCDIR    = @GASNET_INCDIR@
-#GASNET_BINDIR    = @GASNET_BINDIR@
-#GASNET_CONDUIT   = @GASNET_CONDUIT@
-#GASNET_THRENV    = @GASNET_THRENV@
 
-#GASNET_CONDUIT_INCDIR = $(GASNET_INCDIR)/$(GASNET_CONDUIT)-conduit
+COMEX_ROOT        = @COMEX_ROOT@
+COMEX_INCDIR      = @COMEX_INCDIR@
+COMEX_BINDIR      = @COMEX_BINDER@
 
-#MAK_FILE         = $(GASNET_CONDUIT_INCDIR)/$(GASNET_CONDUIT)-$(GASNET_THRENV).mak
-
-#include $(MAK_FILE)
 
 # ---------------------------------------------------------
-COMEX_LIBS        = -L/usr/local/lib -lcomex -L/usr/lib/x86_64-linux-gnu -lmpich
+COMEX_LIBS        = -L/usr/local/lib -lcomex 
+COMEX_LD = mpirun 
 # ---------------------------------------------------------
 
 SOURCES = $(wildcard *.c)
@@ -103,7 +98,7 @@ LD               = @LD@
 LDFLAGS          = @LDFLAGS@
 
 CPPFLAGS         =
-#CPPFLAGS        += $(GASNET_CPPFLAGS)
+CPPFLAGS        += $(COMEX_CPPFLAGS)
 
 ifeq "@HAVE_FEATURE_DEBUG@" "enabled"
 CPPFLAGS        += -DHAVE_FEATURE_DEBUG
@@ -151,7 +146,7 @@ build-stamp:	$(OBJECTS) wrappers openshmem.pc
 #
 firstpass:
 	cp comms-inline.h comms-shared.h ..
-#	echo "CPPFLAGS += -I$(GASNET_INCDIR) -I$(GASNET_CONDUIT_INCDIR) $(GASNET_CPPFLAGS)" > ../comms.mak
+	echo "CPPFLAGS += -I$(COMEX_INCDIR) $(COMEX_CPPFLAGS)" > ../comms.mak
 
 # -- command wrappers depend on comms settings -------------
 
@@ -174,7 +169,7 @@ $(SHMEM_CC):	$(SHMEM_CC).in
 		-e "s%@SHMEM_INC_DIR@%$(SHMEM_INC_DIR)%" \
 		-e "s%@COMEX_LDFLAGS@%$(COMEX_LDFLAGS)%" \
 		-e "s%@COMEX_LIBS@%$(COMEX_LIBS)%" \
-		-e "s%@DRIVER@%$(GASNET_LD)%" \
+		-e "s%@DRIVER@%$(COMEX_LD)%" \
 		-e "s%[ |\\t][ |\\t]*$$%%g" \
 		< $^ > $@
 
@@ -199,10 +194,6 @@ $(SHMEM_FC):	$(SHMEM_CC)
 
 
 $(SHMEM_RUN):	$(SHMEM_RUN).in
-	sed \
-		-e "s%\@GASNET_LD\@%$(GASNET_LD)%" \
-		-e "s%\@GASNET_CONDUIT\@%$(GASNET_CONDUIT)%" \
-		-e "s%\@GASNET_BINDIR\@%$(GASNET_BINDIR)%" \
 		< $^ > $@
 
 # -- pkg-config --------------------------------------------
@@ -213,9 +204,7 @@ openshmem.pc:   openshmem-template.pc
 		-e "s%@SHMEM_LIBS@%$(SHMEM_LIBS)%" \
 		-e "s%@SHMEM_LIB_DIR@%$(SHMEM_LIB_DIR)%" \
 		-e "s%@SHMEM_INC_DIR@%$(SHMEM_INC_DIR)%" \
-		-e "s%@GASNET_LDFLAGS@%$(GASNET_LDFLAGS)%" \
-		-e "s%@GASNET_LIBS@%$(GASNET_LIBS)%" \
-		-e "s%@SHMEM_LD@%$(LD)%" \
+		-e "s%@COMEX_LIBS@%$(COMEX_LIBS)%" \
 		< $^ > $@
 
 # ---------------------------------------------------------

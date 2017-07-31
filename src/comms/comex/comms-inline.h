@@ -298,10 +298,10 @@ static shmem_thread_t thr;
 /**
  * for refractory back-off
  */
-
+#ifdef USE_GASNET
 static long delay = 1000L;      /* ns */
 static struct timespec delayspec;
-
+#endif
 /**
  * polling sentinel
  */
@@ -820,9 +820,9 @@ static inline void
 shmemi_symmetric_memory_init (void)
 {
     const int me = GET_STATE (mype);
-    const int npes = GET_STATE (numpes);
-    
     #ifdef USE_GASNET
+    
+    const int npes = GET_STATE (numpes);
     /*
      * calloc zeroes for us
      */
@@ -2701,10 +2701,10 @@ handler_globalexit_out (gasnet_token_t token, void *buf, size_t bufsiz)
 static void
 shmemi_comms_globalexit_request (int status)
 {
+    #ifdef USE_GASNET
     const int me = GET_STATE (mype);
     const int npes = GET_STATE (numpes);
     int pe;
-    #ifdef USE_GASNET
     for (pe = 0; pe < npes; pe += 1) {
         if (EXPR_LIKELY (me != pe)) {
             gasnet_AMRequestMedium0 (pe, GASNET_HANDLER_globalexit_out,

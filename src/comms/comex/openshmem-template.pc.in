@@ -57,7 +57,7 @@ exec_prefix=${prefix}
 includedir=@INC_DIR@
 libdir=@LIB_DIR@
 #
-Libs: @SHMEM_LDFLAGS@ @SHMEM_LIBS@ @GASNET_LIBS@
+Libs: @SHMEM_LDFLAGS@ @SHMEM_LIBS@ @COMEX_LIBS@
 Cflags: -I@INC_DIR@
 #
 Provides: openshmem

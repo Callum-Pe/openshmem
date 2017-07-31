@@ -57,7 +57,7 @@ exec_prefix=${prefix}
 includedir=/usr/local/include
 libdir=/usr/local/lib
 #
-Libs: @SHMEM_LDFLAGS@ @SHMEM_LIBS@ @GASNET_LIBS@
+Libs: @SHMEM_LDFLAGS@ @SHMEM_LIBS@ @COMEX_LIBS@
 Cflags: -I/usr/local/include
 #
 Provides: openshmem

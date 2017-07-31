@@ -79,8 +79,8 @@ typedef struct hdl_lst_elem
     struct hdl_lst_elem* next;
 } hdl_lst_elem;
 extern hdl_lst_elem head;
-extern hdl_lst_elem tail;
-extern comex_request_t newhdl();
+extern hdl_lst_elem* tail;
+extern comex_request_t* newhdl();
 extern void clearhdls();
 #endif
 /**

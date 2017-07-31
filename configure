@@ -108,6 +108,10 @@ gasnet_bindir=
 gasnet_conduit=
 gasnet_threnv=par
 
+comex_root= 
+comex_incdir=
+comex_bindir=
+
 exe_incdir=/usr/include
 exe_libdir=/usr/lib64
 
@@ -220,6 +224,7 @@ Usage: $progname [options]
                                  (N.B. parsync & seq don't fully
                                        support all of OpenSHMEM)
 
+      --with-comex-root=C
       (These imply --with-comms-layer=... as appropriate)
 
   Optional Support Libraries:
@@ -351,6 +356,10 @@ do
         --with-gasnet-threnv=*)
             gasnet_threnv="`chompit $o`"
             setcanonical comms_layer GASNet
+            ;;
+        --with-comex-root=*)
+          comex_root="`chompit $o`"
+            setcanonical comms_layer comex
             ;;
         --with-compiler=*)
             ct="`chompit $o`"
@@ -829,6 +838,21 @@ bail_gasnet()
     tell "    --with-gasnet-bindir=DIR  (launchers)"
     bailout
 }
+bail_comex()
+{
+    tell ""
+    tell "Comex problem:"
+    tell ""
+    tell "  I can't find a Comex installation:"
+    tell "    $@"
+    tell ""
+    tell "  Specify Comex location with"
+    tell ""
+    tell "    --with-comex-root=DIR"
+    tell ""
+    tell ""
+    bailout
+}
 
 case "$comms_layer" in
     gasnet)
@@ -994,11 +1018,53 @@ case "$comms_layer" in
 
         tell "  Chosen conduit \"$gasnet_conduit\" looks OK"
         ;;  #  end of gasnet section
+    comex)
+        if [ -z "$comex_bindir" ]
+        then
+            if [ -z "$comex_root" ]
+            then
+                bail_comex "No Comex installation found"
+            fi
+            comex_bindir="$comex_root/bin"
+        fi
+
+        if [ ! -d "$comex_bindir" ]
+            then
+                comex_bindir "No directory $comex_bindir found"
+        fi
+
+        if [ -z "$comex_incdir" ]
+        then
+            if [ -z "$comex_root" ]
+            then
+                bail_comex "No Comex installation found"
+            fi
+            comex_incdir="$comex_root/include"
+        fi
+
+        if [ ! -d "$comex_incdir" ]
+            then
+                bail_comex "No directory $comex_incdir found"
+        fi
+
+        tell "  Checking for GASNet configuration under"
+        tell "    $comex_incdir"
+
+        comex_h="comex.h"
+        comex_path_h="$gasnet_incdir/$gasnet_h"
+
+        if [ ! -r "$comex_path_h" ]
+            then
+                bail_comex "Can't find header file $comex_path_h"
+        fi
+        # check GASNet version
+        # make sure gasnet new enough for node locality query
+        ;;
     *)
         tell "  I don't know what to do with communications layer \"$comms_layer\""
         bailout
         ;;
-esac
+    esac
 
 tell "Looking for communication layer ... done"
 tell ""
@@ -1088,6 +1154,9 @@ do
         -e "s%@GASNET_BINDIR@%$gasnet_bindir%g" \
         -e "s%@GASNET_CONDUIT@%$gasnet_conduit%g" \
         -e "s%@GASNET_THRENV@%$gasnet_threnv%g" \
+        -e "s%@COMEX_ROOT@%$comex_root%g" \
+        -e "s%@COMEX_INCDIR@%$comex_incdir%g" \
+        -e "s%@COMEX_BINDIR@%$comex_bindir%g" \
         -e "s%@EXE_HEADERS@%$exe_headers%g" \
         -e "s%@EXE_LIBS@%$exe_libs%g" \
         -e "s%@HAVE_FEATURE_EXPERIMENTAL@%$feature_experimental%g" \
@@ -1146,6 +1215,15 @@ case "$comms_layer" in
         tell "    Using conduit               $gasnet_conduit $cdt_auto"
         tell "    Threading environment       $gasnet_threnv"
         ;;
+    comex)
+        tell "  Comex:"
+        tell "    Version                     $gasnet_ver"
+        tell "    Includes in                 $gasnet_incdir"
+        tell "    Launchers in                $gasnet_bindir"
+        tell "    Using conduit               $gasnet_conduit $cdt_auto"
+        tell "    Threading environment       $gasnet_threnv"
+        ;;
+
     *)
         tell "I do not recognize communications layer \"$comms_layer\"."
         tell "  I should not be here; please report this error"
