@@ -1019,6 +1019,7 @@ case "$comms_layer" in
         tell "  Chosen conduit \"$gasnet_conduit\" looks OK"
         ;;  #  end of gasnet section
     comex)
+        cc_cmd="mpicc"
         if [ -z "$comex_incdir" ]
         then
             if [ -z "$comex_root" ]
