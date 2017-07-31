@@ -1019,20 +1019,6 @@ case "$comms_layer" in
         tell "  Chosen conduit \"$gasnet_conduit\" looks OK"
         ;;  #  end of gasnet section
     comex)
-        if [ -z "$comex_bindir" ]
-        then
-            if [ -z "$comex_root" ]
-            then
-                bail_comex "No Comex installation found"
-            fi
-            comex_bindir="$comex_root/bin"
-        fi
-
-        if [ ! -d "$comex_bindir" ]
-            then
-                bail_comex "No directory $comex_bindir found"
-        fi
-
         if [ -z "$comex_incdir" ]
         then
             if [ -z "$comex_root" ]
