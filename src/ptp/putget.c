@@ -137,7 +137,6 @@ extern void shmem_complexd_put (COMPLEXIFY (double) * dest,
         PE_RANGE_CHECK (pe, 4, debug_name);                             \
         void * src_ = (void*) src;                                      \
         void * dst = shmemi_symmetric_addr_lookup((void*)dest, pe);     \
-        printf("SRC: %p DEST: %p\n",src_,dst);                          \
         comex_put(src_, dst, typed_nelems, pe, shmemgroup);             \
     }
 #endif
@@ -250,7 +249,6 @@ extern void shmem_complexd_get (COMPLEXIFY (double) * dest,
         PE_RANGE_CHECK (pe, 4, debug_name);                             \
         void * dst = (void*) dest;                                      \
         void * src_ = shmemi_symmetric_addr_lookup((void*)src, pe);     \
-        printf("SRC: %p DEST: %p\n",src_,dst);                          \
         comex_get(src_, dst, typed_nelems, pe, shmemgroup);             \
     }
 #endif

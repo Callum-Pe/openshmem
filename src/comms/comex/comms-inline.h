@@ -499,7 +499,6 @@ shmemi_comms_nodes (void)
     int size;
     assert(comex_initialized());
     comex_group_size(shmemgroup, &size);
-    printf("SIZE: %d\n",size); 
     return size;
     #endif
 }
@@ -610,14 +609,11 @@ shmemi_symmetric_addr_lookup (void *dest, int pe)
         size_t aao = (size_t) dest; /* my addr as offset */
         long offset = aao - al;
 
-        printf("Offset: %ld Me:%p Other: %p\n", offset, SHMEM_SYMMETRIC_HEAP_BASE(me),SHMEM_SYMMETRIC_HEAP_BASE(pe));
         /* trap addresses outside the heap */
         if (offset < 0) {
-            printf("offset 0\n");
             return NULL;
         }
         if (offset > SHMEM_SYMMETRIC_HEAP_SIZE (me)) {
-            printf("offset big\n");
             return NULL;
         }
         /* and where it is in the remote heap */
@@ -2925,7 +2921,6 @@ shmemi_comms_exit (int status)
     comex_destroy_mutexes();
     comex_finalize();
     MPI_Finalize();
-    printf("finalized\n");
     #endif
     /* clean up atomics and memory */
     shmemi_atomic_finalize ();
@@ -2985,7 +2980,6 @@ shmemi_comms_init (void)
     GASNET_SAFE (gasnet_init (&argc, &argv));
     #else
     COMEX_SAFE(comex_init_args(&argc,&argv));
-    printf("comex_init\n");
     #endif
     /* now we can ask about the node count & heap */
     SET_STATE (mype, shmemi_comms_mynode ());
