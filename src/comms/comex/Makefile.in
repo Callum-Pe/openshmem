@@ -69,7 +69,6 @@ SHMEM_LDFLAGS    = -L$(SHMEM_LIB_DIR)
 
 COMEX_ROOT        = @COMEX_ROOT@
 COMEX_INCDIR      = @COMEX_INCDIR@
-COMEX_BINDIR      = @COMEX_BINDIR@
 
 
 # ---------------------------------------------------------
@@ -89,7 +88,7 @@ REMOVE           = rm -f
 # compiler-independent options
 #
 
-CC               = @CC@
+CC               = mpicc 
 CXX              = @CXX@
 FC               = @FC@
 CFLAGS           = @CFLAGS@
