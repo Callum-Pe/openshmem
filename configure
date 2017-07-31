@@ -1030,7 +1030,7 @@ case "$comms_layer" in
 
         if [ ! -d "$comex_bindir" ]
             then
-                comex_bindir "No directory $comex_bindir found"
+                bail_comex "No directory $comex_bindir found"
         fi
 
         if [ -z "$comex_incdir" ]
