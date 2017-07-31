@@ -73,7 +73,7 @@ COMEX_BINDIR      = @COMEX_BINDIR@
 
 
 # ---------------------------------------------------------
-COMEX_LIBS        = -L/usr/local/lib -lcomex 
+COMEX_LIBS        = -L/$(COMEX_ROOT)/lib -lcomex 
 COMEX_LD = mpirun 
 # ---------------------------------------------------------
 
@@ -98,7 +98,7 @@ LD               = @LD@
 LDFLAGS          = @LDFLAGS@
 
 CPPFLAGS         =
-CPPFLAGS        += $(COMEX_CPPFLAGS)
+CPPFLAGS        += -I/$(COMEX_INCDIR) 
 
 ifeq "@HAVE_FEATURE_DEBUG@" "enabled"
 CPPFLAGS        += -DHAVE_FEATURE_DEBUG
