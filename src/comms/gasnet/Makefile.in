@@ -1,0 +1,257 @@
+#
+# Copyright (c) 2016
+#   Stony Brook University
+# Copyright (c) 2015 - 2016
+#   Los Alamos National Security, LLC.
+# Copyright (c) 2011 - 2016
+#   University of Houston System and UT-Battelle, LLC.
+# Copyright (c) 2009 - 2016
+#   Silicon Graphics International Corp.  SHMEM is copyrighted
+#   by Silicon Graphics International Corp. (SGI) The OpenSHMEM API
+#   (shmem) is released by Open Source Software Solutions, Inc., under an
+#   agreement with Silicon Graphics International Corp. (SGI).
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# o Redistributions of source code must retain the above copyright notice,
+#   this list of conditions and the following disclaimers.
+#
+# o Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in the
+#   documentation and/or other materials provided with the distribution.
+#
+# o Neither the name of the University of Houston System,
+#   UT-Battelle, LLC. nor the names of its contributors may be used to
+#   endorse or promote products derived from this software without specific
+#   prior written permission.
+#
+# o Neither the name of Los Alamos National Security, LLC, Los Alamos
+#   National Laboratory, LANL, the U.S. Government, nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+# TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+
+#
+# installation root
+#
+PREFIX           = @PREFIX@
+
+SHMEM_INC_DIR    = @INC_DIR@
+SHMEM_LIB_DIR    = @LIB_DIR@
+SHMEM_LIBNAME    = openshmem
+# !! hardwired !!
+SHMEM_LIBS       = -l$(SHMEM_LIBNAME)
+SHMEM_LIBS      += @EXE_LIBS@ -lelf
+# SHMEM_LIBS      += @(SHMEM_LIBS) -ldl
+# SHMEM_LDFLAGS    = -L$(SHMEM_LIB_DIR) -Wl,-rpath,$(SHMEM_LIB_DIR)
+SHMEM_LDFLAGS    = -L$(SHMEM_LIB_DIR)
+
+#
+# GASNet installation root, and setup
+#
+GASNET_ROOT      = @GASNET_ROOT@
+GASNET_INCDIR    = @GASNET_INCDIR@
+GASNET_BINDIR    = @GASNET_BINDIR@
+GASNET_CONDUIT   = @GASNET_CONDUIT@
+GASNET_THRENV    = @GASNET_THRENV@
+
+GASNET_CONDUIT_INCDIR = $(GASNET_INCDIR)/$(GASNET_CONDUIT)-conduit
+
+MAK_FILE         = $(GASNET_CONDUIT_INCDIR)/$(GASNET_CONDUIT)-$(GASNET_THRENV).mak
+
+include $(MAK_FILE)
+
+# ---------------------------------------------------------
+
+SOURCES = $(wildcard *.c)
+OBJECTS = $(SOURCES:.c=.o)
+
+# ---------------------------------------------------------
+
+INSTALL          = install -c
+REMOVE           = rm -f
+
+#
+# compiler-independent options
+#
+
+CC               = @CC@
+CXX              = @CXX@
+FC               = @FC@
+CFLAGS           = @CFLAGS@
+CPPFLAGS         = @CPPFLAGS@
+LD               = @LD@
+LDFLAGS          = @LDFLAGS@
+
+CPPFLAGS        += $(GASNET_CPPFLAGS)
+
+ifeq "@HAVE_FEATURE_DEBUG@" "enabled"
+CPPFLAGS        += -DHAVE_FEATURE_DEBUG
+endif
+
+ifeq "@HAVE_FEATURE_PSHMEM@" "enabled"
+CPPFLAGS        += -DHAVE_FEATURE_PSHMEM
+endif
+
+ifeq "@HAVE_FEATURE_EXPERIMENTAL@" "enabled"
+CPPFLAGS        += -DHAVE_FEATURE_EXPERIMENTAL
+endif
+
+AR               = ar
+ARFLAGS          = cqv
+RANLIB           = ranlib
+
+# ---------------------------------------------------------
+
+SHMEM_CC         = oshcc
+SHMEM_CXX        = oshcxx
+SHMEM_CXX_ALT    = oshc++
+SHMEM_FC         = oshfort
+SHMEM_RUN        = oshrun
+
+# ---------------------------------------------------------
+
+.PHONY: firstpass
+.PHONY: all
+.PHONY: wrappers
+.PHONY: install install-bin install-lib
+.PHONY: uninstall uninstall-bin uninstall-lib
+.PHONY: clean
+
+# # -- start comms interface ---------------------------------
+#
+
+all:	build-stamp
+
+build-stamp:	$(OBJECTS) wrappers openshmem.pc
+	touch $@
+
+#
+# Initialize setup for the inlining
+#
+firstpass:
+	cp comms-inline.h comms-shared.h ..
+	echo "CPPFLAGS += -I$(GASNET_INCDIR) -I$(GASNET_CONDUIT_INCDIR) $(GASNET_CPPFLAGS)" > ../comms.mak
+
+# -- command wrappers depend on comms settings -------------
+
+wrappers:	\
+		$(SHMEM_CC) \
+		$(SHMEM_CXX) \
+		$(SHMEM_CXX_ALT) \
+		$(SHMEM_FC) \
+		$(SHMEM_RUN)
+
+# 2012-10-27: TODO: this is really tricky.  GASNet only tells us
+# about the linker command for C (could be compiler, or MPI wrapper
+# or similar).  There's no sure-fire way of inferring the appropriate
+# C++ and Fortran command names from that.  I can guess, but only guess.
+
+$(SHMEM_CC):	$(SHMEM_CC).in
+	sed \
+		-e "s%@SHMEM_LDFLAGS@%$(SHMEM_LDFLAGS)%" \
+		-e "s%@SHMEM_LIBS@%$(SHMEM_LIBS)%" \
+		-e "s%@SHMEM_INC_DIR@%$(SHMEM_INC_DIR)%" \
+		-e "s%@GASNET_LDFLAGS@%$(GASNET_LDFLAGS)%" \
+		-e "s%@GASNET_LIBS@%$(GASNET_LIBS)%" \
+		-e "s%@DRIVER@%$(GASNET_LD)%" \
+		-e "s%[ |\\t][ |\\t]*$$%%g" \
+		< $^ > $@
+
+$(SHMEM_CXX):	$(SHMEM_CC)
+	lnk=`sed -n -e 's%^driver="\\(.*\\)"%\\1%p' < $^`; \
+	lnk=`basename $$lnk`; \
+	if [ "$$lnk" = "mpicc" ]; then lnk="mpicxx"; else lnk="$(CXX)"; fi; \
+	sed \
+		-e "s%^driver=.*%driver=\"$$lnk\"%" \
+		< $^ > $@
+
+$(SHMEM_CXX_ALT):	$(SHMEM_CXX)
+	cp $^ $@
+
+$(SHMEM_FC):	$(SHMEM_CC)
+	lnk=`sed -n -e 's%^driver="\\(.*\\)"%\\1%p' < $^`; \
+	lnk=`basename $$lnk`; \
+	if [ "$$lnk" = "mpicc" ]; then lnk="mpif90"; else lnk="$(FC)"; fi; \
+        sed \
+		-e "s%^driver=.*%driver=\"$$lnk\"%" \
+		< $^ > $@
+
+
+$(SHMEM_RUN):	$(SHMEM_RUN).in
+	sed \
+		-e "s%\@GASNET_LD\@%$(GASNET_LD)%" \
+		-e "s%\@GASNET_CONDUIT\@%$(GASNET_CONDUIT)%" \
+		-e "s%\@GASNET_BINDIR\@%$(GASNET_BINDIR)%" \
+		< $^ > $@
+
+# -- pkg-config --------------------------------------------
+
+openshmem.pc:   openshmem-template.pc
+	sed \
+		-e "s%@SHMEM_LDFLAGS@%$(SHMEM_LDFLAGS)%" \
+		-e "s%@SHMEM_LIBS@%$(SHMEM_LIBS)%" \
+		-e "s%@SHMEM_LIB_DIR@%$(SHMEM_LIB_DIR)%" \
+		-e "s%@SHMEM_INC_DIR@%$(SHMEM_INC_DIR)%" \
+		-e "s%@GASNET_LDFLAGS@%$(GASNET_LDFLAGS)%" \
+		-e "s%@GASNET_LIBS@%$(GASNET_LIBS)%" \
+		-e "s%@SHMEM_LD@%$(LD)%" \
+		< $^ > $@
+
+# ---------------------------------------------------------
+
+install:	all install-bin install-lib
+
+install-bin:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 755 $(SHMEM_CC)      $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 755 $(SHMEM_CXX)     $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 755 $(SHMEM_CXX_ALT) $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 755 $(SHMEM_FC)      $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL) -m 755 $(SHMEM_RUN)     $(DESTDIR)$(PREFIX)/bin
+
+install-lib:
+	mkdir -p $(DESTDIR)$(PREFIX)/lib/pkgconfig
+	$(INSTALL) -m 644 openshmem.pc $(DESTDIR)$(PREFIX)/lib/pkgconfig
+
+uninstall:	uninstall-lib uninstall-bin
+
+uninstall-lib:
+	$(REMOVE) $(DESTDIR)$(PREFIX)/lib/pkgconfig/openshmem.pc
+	- rmdir $(DESTDIR)$(PREFIX)/lib/pkgconfig
+
+uninstall-bin:
+	$(REMOVE) $(DESTDIR)$(PREFIX)/bin/$(SHMEM_CC)
+	$(REMOVE) $(DESTDIR)$(PREFIX)/bin/$(SHMEM_CXX)
+	$(REMOVE) $(DESTDIR)$(PREFIX)/bin/$(SHMEM_CXX_ALT)
+	$(REMOVE) $(DESTDIR)$(PREFIX)/bin/$(SHMEM_FC)
+	$(REMOVE) $(DESTDIR)$(PREFIX)/bin/$(SHMEM_RUN)
+	- rmdir $(DESTDIR)$(PREFIX)/bin
+
+# -------------------------------------------------------
+
+clean:
+	$(REMOVE) $(SHMEM_CC) $(SHMEM_CXX) $(SHMEM_CXX_ALT)
+	$(REMOVE) $(SHMEM_FC)
+	$(REMOVE) $(SHMEM_RUN)
+	$(REMOVE) $(OBJECTS) build-stamp
+	$(REMOVE) openshmem.pc
+	$(REMOVE) ../comms-inline.h ../comms-shared.h
+	$(REMOVE) ../comms.mak
