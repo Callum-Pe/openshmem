@@ -1217,11 +1217,8 @@ case "$comms_layer" in
         ;;
     comex)
         tell "  Comex:"
-        tell "    Version                     $gasnet_ver"
-        tell "    Includes in                 $gasnet_incdir"
-        tell "    Launchers in                $gasnet_bindir"
-        tell "    Using conduit               $gasnet_conduit $cdt_auto"
-        tell "    Threading environment       $gasnet_threnv"
+        tell "    Includes in                 $comex_incdir"
+        tell "    Launchers in                $comex_bindir"
         ;;
 
     *)
