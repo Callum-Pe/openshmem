@@ -72,7 +72,7 @@ COMEX_INCDIR      = @COMEX_INCDIR@
 
 
 # ---------------------------------------------------------
-COMEX_LIBS        = -L/$(COMEX_ROOT)/lib -lcomex 
+COMEX_LIBS        = -L/$(COMEX_ROOT)/lib -lcomex -lblas 
 COMEX_LD = mpirun 
 # ---------------------------------------------------------
 
