@@ -114,5 +114,6 @@ all_args="$launcher_args $app_args"
 #        RUN_IT="$launcher -n $npes $launcher_args $app_args"
 #        ;;
 #esac
-RUN_IT = "mpirun -n $npes $launcher_args $app_args"
+RUN_IT="mpirun -np $npes $launcher_args $app_args"
+echo "RUN_IT = mpirun -np $npes $launcher_args $app_args"
 exec $RUN_IT
