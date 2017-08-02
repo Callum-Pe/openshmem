@@ -52,12 +52,8 @@
  * all the non-inlined bits that need to be shared per-PE
  *
  */
-#ifdef USE_GASNET
-#include <gasnet.h>
-#else
 #include <comex.h>
 #include <stdint.h>
-#endif
 /**
  * This file provides the layer on top of GASNet, ARMCI or whatever.
  * API should be formalized at some point.
@@ -70,15 +66,10 @@
  *
  */
 
-#ifdef USE_GASNET
-gasnet_seginfo_t *seginfo_table;
-#else
 void **heapptr;  
 comex_group_t shmemgroup = COMEX_GROUP_WORLD;
 uintptr_t heapsize;
-#endif
 
-#ifndef USE_GASNET
 static comex_request_t nexthdl = 0;
 struct hdl_lst_elem head = {NULL ,NULL};
 hdl_lst_elem* tail = &head;
@@ -106,50 +97,6 @@ void clearhdls()
   tail = &head;
   nexthdl =0;
 }
-#endif
-
-#ifdef USE_GASNET
-#if ! defined(HAVE_MANAGED_SEGMENTS)
-
-/**
- * this will be malloc'ed so we can respect setting from environment
- * variable
- */
-
-void *great_big_heap;
-
-/**
- * remotely modified, stop it being put in a register
- */
-volatile int seg_setup_replies_received = 0;
-
-gasnet_hsl_t setup_out_lock = GASNET_HSL_INITIALIZER;
-gasnet_hsl_t setup_bak_lock = GASNET_HSL_INITIALIZER;
-
-#endif /* ! HAVE_MANAGED_SEGMENTS */
-
-/**
- * remotely modified, stop it being put in a register
- */
-volatile int globalexit_replies_received = 0;
-
-gasnet_hsl_t globalexit_out_lock = GASNET_HSL_INITIALIZER;
-gasnet_hsl_t globalexit_bak_lock = GASNET_HSL_INITIALIZER;
-
-/**
- * Initialize handler locks.  OpenSHMEM 1.3++ guarantees per-datatype
- * exclusivity, so prep for that below.
- */
-
-#define AMO_LOCK_DECL_EMIT(Name, Type) \
-    gasnet_hsl_t amo_lock_##Name = GASNET_HSL_INITIALIZER
-
-AMO_LOCK_DECL_EMIT (int, int);
-AMO_LOCK_DECL_EMIT (long, long);
-AMO_LOCK_DECL_EMIT (longlong, long long);
-AMO_LOCK_DECL_EMIT (float, float);
-AMO_LOCK_DECL_EMIT (double, double);
-#endif
 
 /**
  * global barrier counters

@@ -51,28 +51,10 @@
 #ifndef _SHMEM_COMMS_H
 #define _SHMEM_COMMS_H 1
 
-//#define USE_GASNET
-
-#ifdef USE_GASNET
-#include <gasnet.h>
-#else
 #include <comex.h>
-#endif
 
 
-#ifdef USE_GASNET
-#if defined(GASNET_SEGMENT_FAST)
-#define HAVE_MANAGED_SEGMENTS 1
-#elif defined(GASNET_SEGMENT_LARGE)
-#define HAVE_MANAGED_SEGMENTS 1
-#elif defined(GASNET_SEGMENT_EVERYTHING)
-#undef HAVE_MANAGED_SEGMENTS
-#else
-#error "I don't know what kind of GASNet segment model you're trying to use"
-#endif
-#endif
 
-#ifndef USE_GASNET
 typedef struct hdl_lst_elem
 {
     comex_request_t* request;
@@ -82,31 +64,14 @@ extern hdl_lst_elem head;
 extern hdl_lst_elem* tail;
 extern comex_request_t* newhdl();
 extern void clearhdls();
-#endif
 /**
  * set up segment/symmetric handling
  *
  */
-#ifdef USE_GASNET
-extern gasnet_seginfo_t *seginfo_table;
-#else
 extern void **heapptr; 
 extern comex_group_t shmemgroup;
 extern uintptr_t heapsize;
-#endif
 
-#if ! defined(HAVE_MANAGED_SEGMENTS ) && defined(USE_GASNET)
-
-/**
- * this will be malloc'ed so we can respect setting from environment
- * variable
- */
-
-#define DEFAULT_HEAP_SIZE 33554432L /* 32M */
-
-extern void *great_big_heap;
-
-#else
 
 typedef struct
 {
@@ -117,60 +82,16 @@ typedef struct
     volatile int *completed_addr;   /* addr of marker */
 } globalvar_payload_t;
 
-#endif /* ! HAVE_MANAGED_SEGMENTS */
-#ifndef USE_GASNET
 #define DEFAULT_HEAP_SIZE 33554432L /* 32M */
-#endif
 /**
  * remotely modified, stop it being put in a register
  */
 extern volatile int seg_setup_replies_received;
-#ifdef USE_GASNET
-extern gasnet_hsl_t setup_out_lock;
-extern gasnet_hsl_t setup_bak_lock;
-#endif
 /**
  * remotely modified, stop it being put in a register
  */
 extern volatile int globalexit_replies_received;
 
-#ifdef USE_GASNET
-extern gasnet_hsl_t globalexit_out_lock;
-extern gasnet_hsl_t globalexit_bak_lock;
-
-#endif
-
-/**
- * handler locks
- */
-
-#ifdef USE_GASNET
-#define AMO_LOCK_REF_EMIT(Name, Type) extern gasnet_hsl_t amo_lock_##Name
-
-AMO_LOCK_REF_EMIT (int, int);
-AMO_LOCK_REF_EMIT (long, long);
-AMO_LOCK_REF_EMIT (longlong, long long);
-AMO_LOCK_REF_EMIT (float, float);
-AMO_LOCK_REF_EMIT (double, double);
-
-#define AMO_PAYLOAD_EMIT(Name, Type)                                \
-    typedef struct                                                  \
-    {                                                               \
-        Type *r_symm_addr;            /* recipient symmetric var */ \
-        Type value;                   /* value to be swapped */     \
-        Type *value_addr;             /* where value lives */       \
-        Type cond;                    /* conditional value */       \
-                                                                    \
-        volatile int completed;       /* transaction end marker */  \
-        volatile int *completed_addr; /* addr of marker */          \
-    } amo_payload_##Name##_t;
-
-AMO_PAYLOAD_EMIT (int, int);
-AMO_PAYLOAD_EMIT (long, long);
-AMO_PAYLOAD_EMIT (longlong, long long);
-AMO_PAYLOAD_EMIT (float, float);
-AMO_PAYLOAD_EMIT (double, double);
-#endif
 
 /**
  * global barrier
