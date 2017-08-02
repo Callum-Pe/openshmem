@@ -58,7 +58,7 @@ SHMEM_LIB_DIR    = @LIB_DIR@
 SHMEM_LIBNAME    = openshmem
 # !! hardwired !!
 SHMEM_LIBS       = -l$(SHMEM_LIBNAME)
-SHMEM_LIBS      += @EXE_LIBS@ -lelf
+SHMEM_LIBS      += -lelf#@EXE_LIBS@ -lelf
 # SHMEM_LIBS      += @(SHMEM_LIBS) -ldl
 # SHMEM_LDFLAGS    = -L$(SHMEM_LIB_DIR) -Wl,-rpath,$(SHMEM_LIB_DIR)
 SHMEM_LDFLAGS    = -L$(SHMEM_LIB_DIR)
@@ -69,11 +69,12 @@ SHMEM_LDFLAGS    = -L$(SHMEM_LIB_DIR)
 
 COMEX_ROOT        = @COMEX_ROOT@
 COMEX_INCDIR      = @COMEX_INCDIR@
-
+#COMEX_LIB_DIR     = @COMEX_LIB_DIR@
 
 # ---------------------------------------------------------
-COMEX_LIBS        = -L/$(COMEX_ROOT)/lib -lcomex -lblas 
-COMEX_LD = mpirun 
+COMEX_LIBS        = -lcomex -lm
+COMEX_LDFLAGS     = -L$(COMEX_ROOT)# -L$(COMEX_LIB_DIR)
+COMEX_LD = mpicc 
 # ---------------------------------------------------------
 
 SOURCES = $(wildcard *.c)
@@ -193,7 +194,7 @@ $(SHMEM_FC):	$(SHMEM_CC)
 
 
 $(SHMEM_RUN):	$(SHMEM_RUN).in
-		< $^ > $@
+	cp $^  $@
 
 # -- pkg-config --------------------------------------------
 
