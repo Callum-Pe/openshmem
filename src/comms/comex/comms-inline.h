@@ -897,7 +897,7 @@ shmemi_comms_lock_release (SHMEM_LOCK * node, SHMEM_LOCK * lock, int this_pe)
     shmem_short_p ((short *) &node->l_locked, 0, node->l_next);
 }
 #define MAKE_SWAP_REQUEST(NAME, Type)                                   \
-  Type                                                                  \
+  static Type                                                           \
   shmemi_comms_swap_request_##NAME (Type *target, Type value, int pe)    \
   {                                                                     \
         printf("swtich");                                               \
@@ -917,7 +917,7 @@ MAKE_SWAP_REQUEST (double, double );
 MAKE_SWAP_REQUEST (float, float );
 
 #define MAKE_CSWAP_REQUEST(NAME, Type)                                  \
-  Type                                                                  \
+  static Type                                                           \
   shmemi_comms_cswap_request_##NAME (Type *target, Type cond, Type value, int pe) \
   {                                                                     \
         Type temp;                                                      \
@@ -936,7 +936,7 @@ MAKE_CSWAP_REQUEST (long, long);
 MAKE_CSWAP_REQUEST (longlong, long long);
 
 #define MAKE_FADD_REQUEST(NAME, Type)                                   \
-  Type                                                                  \
+  static Type                                                           \
   shmemi_comms_fadd_request_##NAME (Type *target, Type value, int pe)    \
   {                                                                     \
         void* src = &value;                                             \
@@ -963,7 +963,7 @@ MAKE_FADD_REQUEST (long, long);
 MAKE_FADD_REQUEST (longlong, long long);
 
 #define MAKE_FINC_REQUEST(NAME, Type)                                   \
-  Type                                                                  \
+  static Type                                                           \
   shmemi_comms_finc_request_##NAME (Type *target, int pe)                \
   {                                                                     \
     return shmem_##NAME##_fadd(target, 1, pe);                          \
@@ -973,7 +973,7 @@ MAKE_FINC_REQUEST (long, long);
 MAKE_FINC_REQUEST (longlong, long long);
 
 #define MAKE_ADD_REQUEST(NAME, Type)                                    \
-  void shmemi_comms_add_request_##NAME (Type *target, Type value, int pe)     \
+  static void shmemi_comms_add_request_##NAME (Type *target, Type value, int pe)     \
   {                                                                     \
         void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
         int bytes = sizeof(Type);                                       \
@@ -995,7 +995,7 @@ MAKE_ADD_REQUEST (long, long);
 MAKE_ADD_REQUEST (longlong, long long);
 
 #define MAKE_INC_REQUEST(NAME, Type)                                    \
-  void shmemi_comms_inc_request_##NAME (Type *target, int pe)                 \
+  static void shmemi_comms_inc_request_##NAME (Type *target, int pe)                 \
   {                                                                     \
        shmem_##NAME##_add(target, 1, pe);                               \
   } 
@@ -1004,7 +1004,7 @@ MAKE_INC_REQUEST (long, long);
 MAKE_INC_REQUEST (longlong, long long);
 
 #define MAKE_FETCH_REQUEST(NAME, Type)                                  \
-  Type                                                                  \
+  static Type                                                           \
   shmemi_comms_fetch_request_##NAME (const Type *target, int pe)         \
   {                                                                     \
     void * src =NULL;                                                   \
@@ -1022,7 +1022,7 @@ MAKE_FETCH_REQUEST (double, double );
 MAKE_FETCH_REQUEST (float, float );
 
 #define MAKE_SET_REQUEST(NAME, Type)                                    \
-  void shmemi_comms_set_request_##NAME (Type *target, Type value, int pe)\
+  static void shmemi_comms_set_request_##NAME (Type *target, Type value, int pe)\
   {                                                                     \
     void * src = &value;                                                \
     void * dst = shmemi_symmetric_addr_lookup(target, pe);              \
