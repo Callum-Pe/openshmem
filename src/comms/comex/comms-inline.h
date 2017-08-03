@@ -896,7 +896,25 @@ shmemi_comms_lock_release (SHMEM_LOCK * node, SHMEM_LOCK * lock, int this_pe)
 
     shmem_short_p ((short *) &node->l_locked, 0, node->l_next);
 }
-
+#define MAKE_SWAP_REQUEST(NAME, TYPE)                                   \
+  Type                                                                  \
+  shmem_comms_swap_request_##NAME (Type *target, Type value, int pe)    \
+  {                                                                     \
+        Type temp;                                                      \
+        void * temppntr = &temp;                                        \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        comex_lock(0, pe);                                              \
+        comex_get(dst, temppntr, sizeof(Type), pe, shmemgroup);         \
+        comex_put( &value, dst, sizeof(Type), pe, shmemgroup);          \
+        comex_unlock(0, pe);                                            \
+        return temp;                                                    \
+    }
+#endif
+MAKE_SWAP_REQUEST (int, int);
+MAKE_SWAP_REQUEST (long, long):
+MAKE_SWAP_REQUEST (longlong, long long );
+MAKE_SWAP_REQUEST (double, double );
+MAKE_SWAP_REQUEST (float, float );
 
 /*
  * I am not sure this is strictly correct. The Cray man pages suggest
