@@ -73,7 +73,7 @@ COMEX_INCDIR      = @COMEX_INCDIR@
 
 # ---------------------------------------------------------
 COMEX_LIBS        = -lcomex -lm
-COMEX_LDFLAGS     = -L$(COMEX_ROOT)# -L$(COMEX_LIB_DIR)
+COMEX_LDFLAGS     = -L$(COMEX_ROOT)/lib# -L$(COMEX_LIB_DIR)
 COMEX_LD = mpicc 
 # ---------------------------------------------------------
 
