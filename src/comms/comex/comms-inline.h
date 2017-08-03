@@ -896,10 +896,11 @@ shmemi_comms_lock_release (SHMEM_LOCK * node, SHMEM_LOCK * lock, int this_pe)
 
     shmem_short_p ((short *) &node->l_locked, 0, node->l_next);
 }
-#define MAKE_SWAP_REQUEST(NAME, TYPE)                                   \
+#define MAKE_SWAP_REQUEST(NAME, Type)                                   \
   Type                                                                  \
-  shmem_comms_swap_request_##NAME (Type *target, Type value, int pe)    \
+  shmemi_comms_swap_request_##NAME (Type *target, Type value, int pe)    \
   {                                                                     \
+        printf("swtich");                                               \
         Type temp;                                                      \
         void * temppntr = &temp;                                        \
         void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
@@ -909,12 +910,131 @@ shmemi_comms_lock_release (SHMEM_LOCK * node, SHMEM_LOCK * lock, int this_pe)
         comex_unlock(0, pe);                                            \
         return temp;                                                    \
     }
-#endif
 MAKE_SWAP_REQUEST (int, int);
-MAKE_SWAP_REQUEST (long, long):
+MAKE_SWAP_REQUEST (long, long);
 MAKE_SWAP_REQUEST (longlong, long long );
 MAKE_SWAP_REQUEST (double, double );
 MAKE_SWAP_REQUEST (float, float );
+
+#define MAKE_CSWAP_REQUEST(NAME, Type)                                  \
+  Type                                                                  \
+  shmemi_comms_cswap_request_##NAME (Type *target, Type cond, Type value, int pe) \
+  {                                                                     \
+        Type temp;                                                      \
+        void * temppntr = &temp;                                        \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        int bytes = sizeof(Type);                                       \
+        comex_lock(0, pe);                                              \
+        comex_get(dst, temppntr, bytes, pe, shmemgroup);                \
+        if(cond == temp)                                                \
+          comex_put(&value, dst, bytes, pe, shmemgroup);                \
+        comex_unlock(0, pe);                                            \
+        return temp;                                                    \
+  }
+MAKE_CSWAP_REQUEST (int, int);
+MAKE_CSWAP_REQUEST (long, long);
+MAKE_CSWAP_REQUEST (longlong, long long);
+
+#define MAKE_FADD_REQUEST(NAME, Type)                                   \
+  Type                                                                  \
+  shmemi_comms_fadd_request_##NAME (Type *target, Type value, int pe)    \
+  {                                                                     \
+        void* src = &value;                                             \
+        Type temp;                                                      \
+        void * temppntr= &temp;                                         \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        int bytes = sizeof(Type);                                       \
+        comex_lock(0, pe);                                              \
+        comex_get(dst, temppntr, bytes, pe, shmemgroup);                \
+        Type scale = 1;                                                 \
+       int op;                                                          \
+        if(bytes == sizeof(int))                                        \
+          op = COMEX_ACC_INT;                                           \
+        if(bytes == sizeof(long))                                       \
+          op = COMEX_ACC_LNG;                                           \
+        else                                                            \
+          assert("Long long not implemented");                          \
+        comex_acc(op, &scale, src, dst, bytes, pe, shmemgroup);         \
+        comex_unlock(0, pe);                                            \
+        return temp;                                                    \
+  } 
+MAKE_FADD_REQUEST (int, int);
+MAKE_FADD_REQUEST (long, long);
+MAKE_FADD_REQUEST (longlong, long long);
+
+#define MAKE_FINC_REQUEST(NAME, Type)                                   \
+  Type                                                                  \
+  shmemi_comms_finc_request_##NAME (Type *target, int pe)                \
+  {                                                                     \
+    return shmem_##NAME##_fadd(target, 1, pe);                          \
+  }
+MAKE_FINC_REQUEST (int, int);
+MAKE_FINC_REQUEST (long, long);
+MAKE_FINC_REQUEST (longlong, long long);
+
+#define MAKE_ADD_REQUEST(NAME, Type)                                    \
+  void shmemi_comms_add_request_##NAME (Type *target, Type value, int pe)     \
+  {                                                                     \
+        void * dst = shmemi_symmetric_addr_lookup(target, pe);          \
+        int bytes = sizeof(Type);                                       \
+        Type scale = 1;                                                 \
+        int op;                                                         \
+        if(bytes == sizeof(int))                                        \
+          op = COMEX_ACC_INT;                                           \
+        if(bytes == sizeof(long))                                       \
+          op = COMEX_ACC_LNG;                                           \
+        else                                                            \
+          assert("Long long not implemented");                          \
+        comex_lock(0, pe);                                              \
+        comex_acc(op,((void*) &scale),((void*) &value), dst, bytes,     \
+                  pe, shmemgroup);                                      \
+        comex_unlock(0, pe);                                            \
+  } 
+MAKE_ADD_REQUEST (int, int);
+MAKE_ADD_REQUEST (long, long);
+MAKE_ADD_REQUEST (longlong, long long);
+
+#define MAKE_INC_REQUEST(NAME, Type)                                    \
+  void shmemi_comms_inc_request_##NAME (Type *target, int pe)                 \
+  {                                                                     \
+       shmem_##NAME##_add(target, 1, pe);                               \
+  } 
+MAKE_INC_REQUEST (int, int);
+MAKE_INC_REQUEST (long, long);
+MAKE_INC_REQUEST (longlong, long long);
+
+#define MAKE_FETCH_REQUEST(NAME, Type)                                  \
+  Type                                                                  \
+  shmemi_comms_fetch_request_##NAME (const Type *target, int pe)         \
+  {                                                                     \
+    void * src =NULL;                                                   \
+    void * dest = (void*) target;                                       \
+    void * dst = shmemi_symmetric_addr_lookup(dest, pe);                \
+    comex_lock(0, pe);                                                  \
+    comex_get( dst, src, sizeof(Type), pe, shmemgroup);                 \
+    comex_unlock(0, pe);                                                \
+    return *((Type*)src);                                               \
+  } 
+MAKE_FETCH_REQUEST (int, int);
+MAKE_FETCH_REQUEST (long, long);
+MAKE_FETCH_REQUEST (longlong, long long );
+MAKE_FETCH_REQUEST (double, double );
+MAKE_FETCH_REQUEST (float, float );
+
+#define MAKE_SET_REQUEST(NAME, Type)                                    \
+  void shmemi_comms_set_request_##NAME (Type *target, Type value, int pe)\
+  {                                                                     \
+    void * src = &value;                                                \
+    void * dst = shmemi_symmetric_addr_lookup(target, pe);              \
+    comex_lock(0, pe);                                                  \
+    comex_put(src, dst, sizeof(Type), pe, shmemgroup);                  \
+    comex_unlock(0, pe);                                                \
+  } 
+MAKE_SET_REQUEST (int, int);
+MAKE_SET_REQUEST (long, long);
+MAKE_SET_REQUEST (longlong, long long );
+MAKE_SET_REQUEST (double, double );
+MAKE_SET_REQUEST (float, float );
 
 /*
  * I am not sure this is strictly correct. The Cray man pages suggest

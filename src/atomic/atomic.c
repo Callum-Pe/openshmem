@@ -65,7 +65,7 @@
 #include "pshmem.h"
 #endif /* HAVE_FEATURE_PSHMEM */
 
-
+#define USE_GASNET
 /*
  * placeholders: no init/final required (so far)
  */
